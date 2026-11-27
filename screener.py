@@ -124,6 +124,12 @@ def make_lists(rows):
     }
 
 
+def most_traded(rows, n=3):
+    """The n stocks with the most shares traded today, out of all ~500 (no filters). They get a star."""
+    top = sorted(rows, key=lambda r: -r["volume"])[:n]
+    return [{k: r[k] for k in ("symbol", "name", "price", "volume", "change")} for r in top]
+
+
 def _fetch(symbols, **kw):
     """Download in groups of 100 (Yahoo is happier that way), then retry any that failed once."""
     import yfinance as yf
@@ -194,11 +200,13 @@ def run(force=False):
             "busy_relvol": BUSY_RELVOL, "beaten_down_pct": BEATEN_DOWN * 100,
             "big_gap_pct": BIG_GAP * 100, "min_price": MIN_PRICE, "min_avg_volume": MIN_AVG_VOLUME,
         },
+        "most_traded": most_traded(rows),
         "lists": lists,
     }
     OUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     OUT_FILE.write_text(json.dumps(out, indent=1))
     print(f"Done: {len(rows)} stocks checked ({len(missing)} missing). Data up to {session} {data_time} ET.")
+    print("  most traded: " + ", ".join(r["symbol"] for r in out["most_traded"]))
     for k, v in lists.items():
         print(f"  {k}: {len(v)} stocks" + (f" (top: {v[0]['symbol']})" if v else ""))
     return 0

@@ -38,6 +38,11 @@ footer{max-width:1000px;margin:auto;padding:0 16px 32px;color:var(--muted);font-
 .bar b{font-size:17px}.bar small{color:var(--muted)}
 .bar a{color:var(--accent);font-size:13px;text-decoration:none}
 .bar button{margin-left:auto;border:0;background:var(--chip);color:var(--text);border-radius:999px;width:34px;height:34px;font-size:18px;cursor:pointer}
+.hot{margin-top:8px;font-size:14px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.hot:empty{display:none}
+.hot a{background:var(--chip);border-radius:999px;padding:4px 10px;color:var(--text);text-decoration:none}
+.hot a b{color:var(--accent)}
+.star{margin-left:3px}
 #chart{flex:1;min-height:0}
 #chart .tradingview-widget-container,#chart .tradingview-widget-container__widget{height:100%;width:100%}
 </style>
@@ -46,6 +51,7 @@ footer{max-width:1000px;margin:auto;padding:0 16px 32px;color:var(--muted);font-
 <header>
   <h1>📊 Boss's Stock Screener</h1>
   <div class="status" id="status">Loading…</div>
+  <div class="hot" id="hot"></div>
 </header>
 <nav class="tabs" id="tabs"></nav>
 <main>
@@ -55,6 +61,7 @@ footer{max-width:1000px;margin:auto;padding:0 16px 32px;color:var(--muted);font-
 <footer>
   Checks about 500 big US stocks (S&amp;P 500) every 5 minutes while the market is open. Free Yahoo prices, about 15 minutes late.
   "Volume x normal" compares today's volume so far with a normal day <i>by the same time of day</i>.
+  ⭐ = one of the 3 stocks with the most shares traded today, out of all ~500 (with the dollar amount traded).
   Tap a column title to sort. Tap a ticker to open its TradingView chart (free chart from TradingView, also about 15 minutes late).
   <b>Information only, not advice.</b> Nothing here buys or sells anything.
 </footer>
@@ -87,6 +94,7 @@ const COLS = [
 ];
 function pct(v){return (v>0?"+":"")+v.toFixed(1)+"%"}
 function big(v){return v>=1e6?(v/1e6).toFixed(1)+"M":Math.round(v/1e3)+"K"}
+function money(v){return v>=1e9?"$"+(v/1e9).toFixed(1)+"B":"$"+Math.round(v/1e6)+"M"}
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 
 let data=null, tab=TABS[0].key, sortKey=null, sortDir=1;
@@ -94,6 +102,9 @@ try{ const t=localStorage.getItem("tab"); if(TABS.some(x=>x.key===t)) tab=t }cat
 
 function render(){
   if(!data) return;
+  const hot=data.most_traded||[], star=new Set(hot.map(h=>h.symbol));
+  document.getElementById("hot").innerHTML = hot.length ? "⭐ Most traded today:" + hot.map(h=>
+    `<a href="#" class="tk" data-s="${esc(h.symbol)}" data-n="${esc(h.name)}"><b>${esc(h.symbol)}</b> ${big(h.volume)} shares${h.price?" ("+money(h.volume*h.price)+")":""} <span class="${h.change>0?"up":h.change<0?"down":""}">${pct(h.change)}</span></a>`).join("") : "";
   document.getElementById("tabs").innerHTML = TABS.map(x=>
     `<button class="${x.key===tab?"on":""}" data-k="${x.key}">${x.label}<span class="n">${(data.lists[x.key]||[]).length}</span></button>`).join("");
   document.getElementById("explain").textContent = TABS.find(x=>x.key===tab).text;
@@ -102,7 +113,7 @@ function render(){
   let rows=[...(data.lists[tab]||[])];
   if(sortKey) rows.sort((a,b)=>(a[sortKey]>b[sortKey]?1:a[sortKey]<b[sortKey]?-1:0)*sortDir);
   document.getElementById("body").innerHTML = rows.length ? rows.map(r=>"<tr>"+COLS.map(c=>{
-    if(c.k==="symbol") return `<td><a href="https://www.tradingview.com/symbols/${encodeURIComponent(r.symbol.replace("-","."))}/" class="tk" data-s="${esc(r.symbol)}" data-n="${esc(r.name)}">${esc(r.symbol)}</a><small>${esc(r.name)}</small></td>`;
+    if(c.k==="symbol") return `<td><a href="https://www.tradingview.com/symbols/${encodeURIComponent(r.symbol.replace("-","."))}/" class="tk" data-s="${esc(r.symbol)}" data-n="${esc(r.name)}">${esc(r.symbol)}</a>${star.has(r.symbol)?'<span class="star" title="Most traded today">⭐</span>':""}<small>${esc(r.name)}</small></td>`;
     const v=r[c.k], cls=c.c?(v>0?"up":v<0?"down":""):"";
     return `<td class="${cls}">${c.f(v)}</td>`;
   }).join("")+"</tr>").join("") : `<tr><td class="empty" colspan="${COLS.length}">No stocks match this list right now.</td></tr>`;
@@ -154,7 +165,7 @@ function openChart(sym, name){
   sheet.classList.add("on");
 }
 function closeChart(){ sheet.classList.remove("on"); chart.innerHTML=""; }
-document.getElementById("body").addEventListener("click",e=>{
+for (const id of ["body","hot"]) document.getElementById(id).addEventListener("click",e=>{
   const a=e.target.closest("a.tk"); if(!a) return;
   e.preventDefault(); openChart(a.dataset.s, a.dataset.n);
 });

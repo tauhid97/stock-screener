@@ -75,6 +75,13 @@ def test_lists():
     assert names("big_gap") == ["GAPPER"]
 
 
+def test_most_traded():
+    rows = [dict(symbol=n, name=n, volume=v, change=1.0, price=10) for n, v in
+            [("A", 5), ("B", 50), ("C", 20), ("D", 40), ("E", 1)]]
+    assert [r["symbol"] for r in s.most_traded(rows)] == ["B", "D", "C"]
+    assert set(s.most_traded(rows)[0]) == {"symbol", "name", "price", "volume", "change"}
+
+
 def test_market_hours():
     assert s.market_is_open(datetime(2026, 11, 25, 10, 0, tzinfo=ET))
     assert s.market_is_open(datetime(2026, 11, 25, 16, 15, tzinfo=ET))
