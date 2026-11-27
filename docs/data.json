@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-26 20:57 ET",
+ "updated": "2026-11-26 21:08 ET",
  "session": "2026-11-25",
  "data_time": "15:55",
  "checked": 503,
@@ -11,6 +11,29 @@
   "min_price": 5.0,
   "min_avg_volume": 500000
  },
+ "most_traded": [
+  {
+   "symbol": "NVDA",
+   "name": "Nvidia",
+   "price": 149.27,
+   "volume": 500769949,
+   "change": -3.93
+  },
+  {
+   "symbol": "SNDK",
+   "name": "Sandisk",
+   "price": 73.51,
+   "volume": 116225769,
+   "change": -22.13
+  },
+  {
+   "symbol": "INTC",
+   "name": "Intel",
+   "price": 54.45,
+   "volume": 114609084,
+   "change": -0.63
+  }
+ ],
  "lists": {
   "up_busy": [
    {
