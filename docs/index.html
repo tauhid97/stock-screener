@@ -30,6 +30,16 @@ tr:last-child td{border-bottom:0}
 .up{color:var(--up)}.down{color:var(--down)}
 .empty{padding:24px;text-align:center;color:var(--muted)}
 footer{max-width:1000px;margin:auto;padding:0 16px 32px;color:var(--muted);font-size:12px}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;justify-content:center;z-index:10}
+.sheet.on{display:flex}
+.box{background:var(--card);width:100%;max-width:1000px;height:88vh;border-radius:14px 14px 0 0;display:flex;flex-direction:column;overflow:hidden}
+@media (min-width:768px){.sheet{align-items:center}.box{height:80vh;width:calc(100% - 32px);border-radius:14px}}
+.bar{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.bar b{font-size:17px}.bar small{color:var(--muted)}
+.bar a{color:var(--accent);font-size:13px;text-decoration:none}
+.bar button{margin-left:auto;border:0;background:var(--chip);color:var(--text);border-radius:999px;width:34px;height:34px;font-size:18px;cursor:pointer}
+#chart{flex:1;min-height:0}
+#chart .tradingview-widget-container,#chart .tradingview-widget-container__widget{height:100%;width:100%}
 </style>
 </head>
 <body>
@@ -45,9 +55,20 @@ footer{max-width:1000px;margin:auto;padding:0 16px 32px;color:var(--muted);font-
 <footer>
   Checks about 500 big US stocks (S&amp;P 500) every 5 minutes while the market is open. Free Yahoo prices, about 15 minutes late.
   "Volume x normal" compares today's volume so far with a normal day <i>by the same time of day</i>.
-  Tap a column title to sort. Tap a ticker to open its Finviz chart.
+  Tap a column title to sort. Tap a ticker to open its TradingView chart (free chart from TradingView, also about 15 minutes late).
   <b>Information only, not advice.</b> Nothing here buys or sells anything.
 </footer>
+<div class="sheet" id="sheet">
+  <div class="box" role="dialog" aria-modal="true" aria-label="Stock chart">
+    <div class="bar">
+      <b id="cSym"></b><small id="cName"></small>
+      <a id="cTv" target="_blank" rel="noopener">TradingView ↗</a>
+      <a id="cFv" target="_blank" rel="noopener">Finviz ↗</a>
+      <button id="cClose" aria-label="Close">✕</button>
+    </div>
+    <div id="chart"></div>
+  </div>
+</div>
 <script>
 const TABS = [
   {key:"up_busy", label:"🟢 Up + busy", text:"Up today, and trading at least 1.5x their normal volume for this time of day. Busiest first."},
@@ -81,7 +102,7 @@ function render(){
   let rows=[...(data.lists[tab]||[])];
   if(sortKey) rows.sort((a,b)=>(a[sortKey]>b[sortKey]?1:a[sortKey]<b[sortKey]?-1:0)*sortDir);
   document.getElementById("body").innerHTML = rows.length ? rows.map(r=>"<tr>"+COLS.map(c=>{
-    if(c.k==="symbol") return `<td><a href="https://finviz.com/quote.ashx?t=${encodeURIComponent(r.symbol.replace("-","."))}" target="_blank" rel="noopener">${esc(r.symbol)}</a><small>${esc(r.name)}</small></td>`;
+    if(c.k==="symbol") return `<td><a href="https://www.tradingview.com/symbols/${encodeURIComponent(r.symbol.replace("-","."))}/" class="tk" data-s="${esc(r.symbol)}" data-n="${esc(r.name)}">${esc(r.symbol)}</a><small>${esc(r.name)}</small></td>`;
     const v=r[c.k], cls=c.c?(v>0?"up":v<0?"down":""):"";
     return `<td class="${cls}">${c.f(v)}</td>`;
   }).join("")+"</tr>").join("") : `<tr><td class="empty" colspan="${COLS.length}">No stocks match this list right now.</td></tr>`;
@@ -115,6 +136,32 @@ document.getElementById("head").addEventListener("click",e=>{
   const th=e.target.closest("th"); if(!th) return;
   const k=th.dataset.k; if(sortKey===k) sortDir=-sortDir; else {sortKey=k; sortDir=k==="symbol"?1:-1} render();
 });
+// Tap a ticker: show TradingView's free chart in a pop-up.
+const sheet=document.getElementById("sheet"), chart=document.getElementById("chart");
+function openChart(sym, name){
+  const tv=sym.replace("-",".");
+  document.getElementById("cSym").textContent=sym;
+  document.getElementById("cName").textContent=name;
+  document.getElementById("cTv").href="https://www.tradingview.com/symbols/"+encodeURIComponent(tv)+"/";
+  document.getElementById("cFv").href="https://finviz.com/quote.ashx?t="+encodeURIComponent(tv);
+  chart.innerHTML='<div class="tradingview-widget-container"><div class="tradingview-widget-container__widget"></div></div>';
+  const s=document.createElement("script");
+  s.src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js"; s.async=true;
+  s.textContent=JSON.stringify({symbol:tv, interval:"5", timezone:"America/New_York",
+    theme:matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light", style:"1", locale:"en",
+    autosize:true, allow_symbol_change:false, hide_side_toolbar:true, calendar:false, support_host:"https://www.tradingview.com"});
+  chart.firstChild.appendChild(s);
+  sheet.classList.add("on");
+}
+function closeChart(){ sheet.classList.remove("on"); chart.innerHTML=""; }
+document.getElementById("body").addEventListener("click",e=>{
+  const a=e.target.closest("a.tk"); if(!a) return;
+  e.preventDefault(); openChart(a.dataset.s, a.dataset.n);
+});
+document.getElementById("cClose").addEventListener("click",closeChart);
+sheet.addEventListener("click",e=>{ if(e.target===sheet) closeChart(); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeChart(); });
+
 load(); setInterval(load, 2*60*1000);
 </script>
 </body>
