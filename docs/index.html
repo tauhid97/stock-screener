@@ -43,7 +43,7 @@ footer{max-width:1000px;margin:auto;padding:0 16px 32px;color:var(--muted);font-
   <div class="wrap"><table><thead id="head"></thead><tbody id="body"></tbody></table></div>
 </main>
 <footer>
-  Checks about 500 big US stocks (S&amp;P 500) every 15 minutes while the market is open. Free Yahoo prices, about 15 minutes late.
+  Checks about 500 big US stocks (S&amp;P 500) every 5 minutes while the market is open. Free Yahoo prices, about 15 minutes late.
   "Volume x normal" compares today's volume so far with a normal day <i>by the same time of day</i>.
   Tap a column title to sort. Tap a ticker to open its Finviz chart.
   <b>Information only, not advice.</b> Nothing here buys or sells anything.
@@ -93,7 +93,7 @@ function statusLine(){
   const open = day>0 && day<6 && mins>=570 && mins<960;
   const sess=new Date(data.session+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
   return `Prices up to <b>${sess}, ${data.data_time} ET</b> · checked ${data.checked} stocks · ` +
-    (open ? "🟢 market open, updates every 15 min" : "🌙 market closed, showing the last market day");
+    (open ? "🟢 market open, updates every 5 min" : "🌙 market closed, showing the last market day");
 }
 
 async function load(){
@@ -115,7 +115,7 @@ document.getElementById("head").addEventListener("click",e=>{
   const th=e.target.closest("th"); if(!th) return;
   const k=th.dataset.k; if(sortKey===k) sortDir=-sortDir; else {sortKey=k; sortDir=k==="symbol"?1:-1} render();
 });
-load(); setInterval(load, 5*60*1000);
+load(); setInterval(load, 2*60*1000);
 </script>
 </body>
 </html>

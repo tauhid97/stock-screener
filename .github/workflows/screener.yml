@@ -2,17 +2,19 @@ name: Update screener
 
 on:
   schedule:
-    # Every 15 minutes, 13:00-21:59 UTC on weekdays. The script itself checks
+    # Every 5 minutes, 13:00-21:59 UTC on weekdays. The script itself checks
     # New York time and only works 9:30 am - 4:30 pm ET on market days.
-    - cron: "*/15 13-21 * * 1-5"
-  # Also run right away when the program or stock list changes (and by hand from the Actions tab).
+    - cron: "*/5 13-21 * * 1-5"
+  # Also run right away when the program, stock list or page changes (and by hand from the Actions tab).
   push:
     branches: [main]
-    paths: ["screener.py", "data/tickers.csv", ".github/workflows/screener.yml"]
+    paths: ["screener.py", "data/tickers.csv", "docs/index.html", ".github/workflows/screener.yml"]
   workflow_dispatch:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 concurrency:
   group: screener
@@ -22,6 +24,8 @@ jobs:
   update:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment:
+      name: github-pages
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -34,11 +38,22 @@ jobs:
       - name: Run screener
         run: python -W ignore screener.py ${{ github.event_name != 'schedule' && '--force' || '' }}
       - name: Save new data
+        id: save
         run: |
           git add docs/data.json
-          if git diff --cached --quiet; then echo "No change."; exit 0; fi
+          if git diff --cached --quiet; then echo "No change."; echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0; fi
           git config user.name "screener-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "Update screener data"
           git pull --rebase
           git push
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+      # Publish the page straight from here (no 10-updates-an-hour limit this way).
+      - if: steps.save.outputs.changed == 'true' || github.event_name != 'schedule'
+        uses: actions/configure-pages@v5
+      - if: steps.save.outputs.changed == 'true' || github.event_name != 'schedule'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+      - if: steps.save.outputs.changed == 'true' || github.event_name != 'schedule'
+        uses: actions/deploy-pages@v4
